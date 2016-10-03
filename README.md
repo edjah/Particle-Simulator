@@ -1,5 +1,8 @@
 # Particle-Simulator
 
+Click here to view the simulation
+https://edjah.github.io/Particle-Simulator/
+
 Instructions
 -----------------
 1. Click anywhere to create a new particle
