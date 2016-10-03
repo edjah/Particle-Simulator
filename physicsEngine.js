@@ -551,8 +551,6 @@ var cloud = function (cloudCenterX, cloudCenterY, numParticles) {
     }
 }
 
-cloud(300, 300, 10);
-
 var drawFrame = function () {
     managePaths();
     calculateForces();
