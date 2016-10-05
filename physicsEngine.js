@@ -40,6 +40,8 @@ var Vector = function (x, y, z) {
         return anotherVector.mult(this.dot(anotherVector) / anotherVector.dot(anotherVector));
     }
 }
+
+// Who cares about libraries????
 var random = function (a, b, integers) {
     if (integers === 1) {
         b = b + 1;
@@ -530,6 +532,28 @@ $("#canvas").mouseup(function() {
         p1 = new Vector(0, 0);
         p2 = new Vector(0, 0);
     }
+});
+
+$("#simspeed").on("input", function() {
+    simSpeed = this.value / 20;
+});
+$("#elasticity").on("input", function() {
+    elasticity = this.value / 100;
+});
+$("#mass").on("input", function() {
+    currentMass = 20 * Math.exp(this.value * 0.046051701);
+});
+$("#charge").on("input", function() {
+    currentCharge = (this.value - 50) * 10;
+});
+$("#gravity").on("input", function() {
+    G = Math.exp(this.value * 0.046151205) - 1;
+});
+$("#coulomb").on("input", function() {
+    K = Math.exp(this.value * 0.046151205) - 1;
+});
+$("#absorb").on("change", function() {
+    absorbMode = !absorbMode;
 });
 
 // A CLOUD OF PARTICLES!

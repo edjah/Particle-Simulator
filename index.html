@@ -12,7 +12,26 @@
     </svg>
 
     <!-- TODO: Implement sliders to adjust global constants, and add fun presets -->
-    <div id="info"></div>
+    <div id="info">
+        <h1>Particle Simulator</h1>
+        <div id="properties">
+            Sim Speed 
+            <input id="simspeed" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Elasticity
+            <input id="elasticity" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Mass <br>
+            <input id="mass" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Charge <br>
+            <input id="charge" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Gravity Constant
+            <input id="gravity" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Electromagnetic Constant
+            <input id="coulomb" class="rangeslider" type="range"  min="0" max="100"/> <br>
+            Absorb Mode
+            <input id="absorb" type="checkbox" name="absorb">
+
+        </div>
+    </div>
     <p id="fpscounter" unselectable="on">FPS: </p>
   
  
