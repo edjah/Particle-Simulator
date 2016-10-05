@@ -215,7 +215,7 @@ var velocityVector = function () {
     }) 
 };
 
-var createParticle = function (px, py, vx, vy, mass, charge) {
+var createParticle = function (px, py, vx, vy, mass, charge, colorString) {
     if (px === undefined) { px = 0; }
     if (py === undefined) { py = 0; }
     if (vx === undefined) { vx = 0; }
@@ -228,7 +228,9 @@ var createParticle = function (px, py, vx, vy, mass, charge) {
     var newPathId = "path" + numUniqueParticles;
     newTag.setAttribute("id", newTagId);
     newPath.setAttribute("id", newPathId);
-    var colorString = "rgb(" + (Math.floor(Math.random() * (255 - 75)) + 75) + ", " + (Math.floor(Math.random() * (255 - 75)) + 75) + ", " + (Math.floor(Math.random() * (255 - 75)) + 75) + ")";
+    if (colorString == null) {
+        colorString = "rgb(" + (Math.floor(Math.random() * (255 - 75)) + 75) + ", " + (Math.floor(Math.random() * (255 - 75)) + 75) + ", " + (Math.floor(Math.random() * (255 - 75)) + 75) + ")";
+    }
     $("#canvas").prepend(newPath);
     $("#canvas").append(newTag);
     $("#" + newTagId).attr({
@@ -504,6 +506,26 @@ var calculateForces = function() {
     }
 };
 
+function reset() {
+    G = 1; $("#gravity").attr("value", 15);
+    K = 0; $("#coulomb").attr("value", 15);
+    numUniqueParticles = 1;
+    simSpeed = 1; $("#simspeed").attr("value", 20);
+    currentCharge = 0; $("#charge").attr("value", 50);
+    currentMass = 400; $("#simspeed").attr("value", 65);
+    elasticity = 1; $("#simspeed").attr("value", 100);
+    tracingPaths = true; $("#showpath").prop('checked', true);
+    absorbMode = false; $("absorb").prop('checked', false);
+    trailLength = 100; $("#trail-length").attr("value", 25);
+    for (var i = 0; i < list.length; i++)
+    {
+        $(list[i].htmlID).remove();
+        $(list[i].pathID).remove();
+    }
+    list = [];
+    pathList = [];
+}
+
 $("#canvas").mousedown(function(event) {
     if (event.which === 1) {
         p1.x = event.pageX - 200;
@@ -552,9 +574,46 @@ $("#gravity").on("input", function() {
 $("#coulomb").on("input", function() {
     K = Math.exp(this.value * 0.046151205) - 1;
 });
+$("#trail-length").on("input", function() {
+    trailLength = 4 * this.value;
+});
 $("#absorb").on("change", function() {
     absorbMode = !absorbMode;
 });
+$("#showpath").on("change", function() {
+    tracingPaths = !tracingPaths;
+})
+$("#reset").click(function() {
+    reset();
+});
+
+// Sun-Earth-Moon
+$("#preset1").click(function(){
+    reset();
+    createParticle(700, 500, -0.46, 0.46, 5000, 0, "rgb(255, 255, 0)");
+    createParticle(900, 700, 2.8, -2.8, 500, 0, "rgb(0, 255, 30)");
+    createParticle(950, 750, 4.8, -4.8, 100, 0, "rgb(70, 70, 70)");
+});
+
+// Star Dance
+$("#preset2").click(function(){
+    reset();
+    createParticle(500, 450, -1.118, 0, 250, 0, "#d43353");
+    createParticle(500, 550, 1.118, 0, 250, 0, "#22d422");
+    createParticle(1100, 450, -1.118, 0, 250, 0, "#3d68cc");
+    createParticle(1100, 550, 1.118, 0, 250, 0, "#cc783d");
+});
+
+// Double Binary
+$("#preset3").click(function(){
+    reset();
+    createParticle(500, 450, -1.118, 0.645, 250, 0, "#d43353");
+    createParticle(500, 550, 1.118, 0.645, 250, 0, "#22d422");
+    createParticle(1100, 450, -1.118, -0.645, 250, 0, "#3d68cc");
+    createParticle(1100, 550, 1.118, -0.645, 250, 0, "#cc783d");
+});
+
+
 
 // A CLOUD OF PARTICLES!
 var cloud = function (cloudCenterX, cloudCenterY, numParticles) {
