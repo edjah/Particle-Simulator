@@ -6,8 +6,7 @@
 </head>
    
 <body>
-    
-    <svg id="canvas" unselectable="on">
+    <svg id="canvas" unselectable="on" oncontextmenu="return false;">
         <line id="line" style="stroke: #ffffff; stroke-width: 2" />
     </svg>
 
@@ -47,7 +46,8 @@
     <p id="fpscounter" unselectable="on">FPS: </p>
   
  
-    <script src="jquery.min.js"></script>	
+    <script src="jquery.min.js"></script>
+    <script src="jquery.mousewheel.min.js"></script>
     <script src="physicsEngine.js"></script>
  
 </body>

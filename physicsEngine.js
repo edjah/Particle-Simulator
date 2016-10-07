@@ -1,5 +1,6 @@
 // An important object constructor and two useful functions
 // TODO: Fix motionless particle with non-zero velocity due to posUpdate problem
+// TODO: Fix absorb mode zoom issues
 var Vector = function (x, y, z) {
     if (x === undefined) { this.x = 0; } else { this.x = x; }
     if (y === undefined) { this.y = 0; } else { this.y = y; }
@@ -16,7 +17,7 @@ var Vector = function (x, y, z) {
         return Math.sqrt((this.x * this.x) + (this.y * this.y) + (this.z * this.z));
     }
     this.dist = function (anotherVector) {
-        return distance = this.subtract(anotherVector).magnitude();
+        return this.subtract(anotherVector).magnitude();
     }
     this.dot = function (anotherVector) {
         return (this.x * anotherVector.x) + (this.y * anotherVector.y) + (this.z * anotherVector.z);
@@ -89,10 +90,22 @@ var netMomentum;
 var netKineticEnergy;
 var centerofmass;
 
+// Deals with zoom
+var scalar = 1.189;
+var currentScalar = 1;
+
+var centering = false;
+var centeredParticle = null;
+var recentCenter = false;
+
+var isDragging = false;
+var lastMousePos = new Vector();
+
 var targetFrameRate = 60;
 var animation;
-var width = window.innerWidth;
+var width = window.innerWidth - 200;
 var height = window.innerHeight;
+var screenCenter = new Vector(width/2, height/2);
 var list = []; //An array of every particle in the system
 var pathList = []; // An array of every corresponding path
 var falseArray; // Literally an array containing just falses. It's the same length as list. Amazingly useful
@@ -243,6 +256,8 @@ var createParticle = function (px, py, vx, vy, mass, charge, colorString) {
     $("#" + newPathId).attr({"d": "M " + px + " " + py, "fill": "none"});
     list.push(new Particle("#" + newTagId, "#" + newPathId, px, py, vx, vy, mass, charge));
     numUniqueParticles++;
+
+    return list[list.length - 1];
 };
 
 var findCollisionGroups = function (particleList) {
@@ -318,6 +333,10 @@ var absorbCollision = function(collisionGroup) {
         // particle indices in 'list' change, so this part is an unfortunate necessity
         for (var j = 0; j < list.length; j++) {
             if (g[i].listID === list[j].listID) {
+                if (list[j] == centeredParticle) {
+                    centeredParticle = null;
+                    centering = false;
+                }
                 list.splice(j, 1);
                 break;
             }
@@ -397,7 +416,6 @@ var calculateImpulse = function (particle1, particle2, collisionGroup) {
             }
         }
     }
-    console.log(b.recentCollide[a.listID])
     if (b.recentCollide[a.listID]) {
         var direction = a.position.subtract(b.position).normalize();
         var relativeVelocity = a.velocity.subtract(b.velocity);
@@ -442,8 +460,6 @@ var calculateImpulse = function (particle1, particle2, collisionGroup) {
         var relativeVelocity = a.velocity.subtract(v2);
         var tempScalar = relativeVelocity.dot(dir2);
         impulse = dir2.mult(tempScalar * a.mass * node.mass * (1 + elasticity) / (a.mass + node.mass));
-        console.log(impulse)
-        console.log(node.listID + " " + a.listID)
     }
     
 
@@ -505,10 +521,12 @@ var calculateForces = function() {
         }
     }
 };
-
 function reset() {
     G = 1; $("#gravity").attr("value", 15);
     K = 0; $("#coulomb").attr("value", 15);
+    currentScalar = 1;
+    centering = false;
+    centeredParticle = null;
     numUniqueParticles = 1;
     simSpeed = 1; $("#simspeed").attr("value", 20);
     currentCharge = 0; $("#charge").attr("value", 50);
@@ -525,6 +543,150 @@ function reset() {
     list = [];
     pathList = [];
 }
+function clearPaths() {
+    for (var i = 0; i < list.length; i++)
+    {
+        if (list[i].path != null) {
+            list[i].path.dString = "M " + list[i].position.x + " " + list[i].position.y;
+            list[i].path.numPoints = 1;
+        }
+
+    }
+}
+function zoomIn(numTimes, centerX, centerY) {
+    if (centerX == null || centerY == null) {
+        centerX = screenCenter.x;
+        centerY = screenCenter.y;
+    }
+    if (numTimes == null) {
+        numTimes = 1;
+    }
+    for (var j = 0; j < numTimes; j++) {
+        G *= scalar;
+        K *= scalar;
+        currentMass *= scalar * scalar;
+        currentScalar *= scalar;
+        for (var i = 0; i < list.length; i++) {
+            list[i].mass *= scalar * scalar;
+            list[i].radius *= scalar;
+            list[i].charge *= scalar * scalar;
+            list[i].position.x = centerX + (list[i].position.x - centerX) * scalar;
+            list[i].position.y = centerY + (list[i].position.y - centerY) * scalar;
+            list[i].velocity.x *= scalar;
+            list[i].velocity.y *= scalar;
+        }
+    }
+    if (centering) {
+        recentCenter = true;
+    }
+    clearPaths();
+}
+function zoomOut(numTimes, centerX, centerY) {
+    if (centerX == null || centerY == null) {
+        centerX = screenCenter.x;
+        centerY = screenCenter.y;
+    }
+    if (numTimes == null) {
+        numTimes = 1;
+    }
+    for (var j = 0; j < numTimes; j++) {
+        G /= scalar;
+        K /= scalar;
+        currentMass /= scalar * scalar;
+        currentScalar /= scalar;
+        for (var i = 0; i < list.length; i++) {
+            list[i].mass /= scalar * scalar;
+            list[i].radius /= scalar;
+            list[i].charge /= scalar * scalar;
+            list[i].position.x = centerX + (list[i].position.x - centerX) / scalar;
+            list[i].position.y = centerY + (list[i].position.y - centerY) / scalar;
+            list[i].velocity.x /= scalar;
+            list[i].velocity.y /= scalar;
+        }
+    }
+    if (centering) {
+        recentCenter = true;
+    }
+
+    clearPaths();
+}
+function moveCam(direction) {
+    switch(direction) {
+        case "up":
+            for (var i = 0; i < list.length; i++) {
+                list[i].position.y -= 10;
+            }
+            break;
+        case "down":
+            for (var i = 0; i < list.length; i++) {
+                list[i].position.y += 10;
+            }
+            break;
+        case "left":
+            for (var i = 0; i < list.length; i++) {
+                list[i].position.x += 10;
+            }
+            break;
+        case "right":
+            for (var i = 0; i < list.length; i++) {
+                list[i].position.x -= 10;
+            }
+            break;
+    }
+    clearPaths();   
+}
+function center(particle) {
+    if (particle != null) {
+        var shift = screenCenter.subtract(particle.position);
+        for (var i = 0; i < list.length; i++) {
+            list[i].position = list[i].position.add(shift);
+        }
+        if (recentCenter) {
+            clearPaths();
+            recentCenter = false;
+        }
+    }
+
+}
+$(document).keydown(function(e) {
+    switch (e.which) {
+        case 38: moveCam("down"); break;
+        case 40: moveCam("up"); break;
+        case 37: moveCam("left"); break;
+        case 39: moveCam("right"); break;
+        case 90: zoomIn(); break;
+        case 88: zoomOut(); break;
+        case 67:
+            if (!centering) {
+                centeredParticle = list[0];
+                for (var i = 0; i < list.length; i++) {
+                    if (list[i].mass > centeredParticle.mass) {
+                        centeredParticle = list[i];
+                    }
+                }
+                centering = true;
+                center(centeredParticle);
+                clearPaths();
+            }
+            else {
+                centering = false;
+            }
+
+    }
+});
+$(window).resize(function() {
+    width = window.innerWidth - 200;
+    height = window.innerHeight;
+    screenCenter = new Vector(width/2, height/2);
+});
+$('#canvas').mousewheel(function(event) {
+    if (event.deltaY > 0) {
+        zoomIn(1, event.pageX - 200, event.pageY);
+    }
+    else {
+        zoomOut(1, event.pageX - 200, event.pageY)
+    }
+});
 
 $("#canvas").mousedown(function(event) {
     if (event.which === 1) {
@@ -533,6 +695,29 @@ $("#canvas").mousedown(function(event) {
         velocityVectorActive = true;
         velocityVector();
     }
+    else if (event.which == 3 && !isDragging) {
+        isDragging = true;
+        lastMousePos.x = event.pageX;
+        lastMousePos.y = event.pageY;
+    }
+    else if (event.which == 2) {
+        if (centering) {
+            centering = false;
+        }
+        else {
+            var mousePosVector = new Vector(event.pageX - 200, event.pageY);
+            for (var i = 0; i < list.length; i++) {
+                if (mousePosVector.dist(list[i].position) < list[i].radius) {
+                    centeredParticle = list[i];
+                    centering = true;
+                    center(centeredParticle);
+                    clearPaths();
+                    break;
+                }
+            }
+        }
+    }
+    
 });
 $("#canvas").mouseleave(function() {
    if (velocityVectorActive) {
@@ -546,6 +731,7 @@ $("#canvas").mouseleave(function() {
 });
 
 $("#canvas").mouseup(function() {
+    isDragging = false;
     if (velocityVectorActive) {
         velocityVectorActive = false;
         $("#line").attr("display", "none");
@@ -555,6 +741,21 @@ $("#canvas").mouseup(function() {
         p2 = new Vector(0, 0);
     }
 });
+
+$("#canvas").mousemove(function(e){
+    if(isDragging && !centering) {
+        var currentMousePos = new Vector(e.pageX, e.pageY);
+        var diff = currentMousePos.subtract(lastMousePos);
+        for (var i = 0; i < list.length; i++) {
+            list[i].position.x += diff.x;
+            list[i].position.y += diff.y;
+        }
+        lastMousePos = currentMousePos.get();
+        clearPaths();
+    }
+});
+
+
 
 $("#simspeed").on("input", function() {
     simSpeed = this.value / 20;
@@ -575,7 +776,24 @@ $("#coulomb").on("input", function() {
     K = Math.exp(this.value * 0.046151205) - 1;
 });
 $("#trail-length").on("input", function() {
+    var oldTrailLength = trailLength;
     trailLength = 4 * this.value;
+    if (this.value == 0) {
+        for (var i = 0; i < list.length; i++) { 
+            $(list[i].path.pathID).attr("d", "");
+        }
+        pathList = [];
+        tracingPaths = false;
+    } else {
+        tracingPaths = true;
+    }
+    if (tracingPaths && oldTrailLength > trailLength) {
+        for (var i = 0; i < pathList.length; i++) {
+            pathList[i].dString = dStringSplicer(pathList[i].dString, pathList[i].numPoints - trailLength)
+            pathList[i].numPoints = trailLength;
+        }
+    }
+
 });
 $("#absorb").on("change", function() {
     absorbMode = !absorbMode;
@@ -590,9 +808,11 @@ $("#reset").click(function() {
 // Sun-Earth-Moon
 $("#preset1").click(function(){
     reset();
-    createParticle(700, 500, -0.46, 0.46, 5000, 0, "rgb(255, 255, 0)");
-    createParticle(900, 700, 2.8, -2.8, 500, 0, "rgb(0, 255, 30)");
-    createParticle(950, 750, 4.8, -4.8, 100, 0, "rgb(70, 70, 70)");
+    centering = true;
+    centeredParticle = createParticle(700, 500, 0, 0.47, 20000, 0, "rgb(255, 255, 0)");
+    createParticle(1300, 500, 0, -5.77, 1000, 0, "rgb(0, 255, 30)");
+    createParticle(1400, 500, 0, -8.93, 100, 0, "rgb(70, 70, 70)");
+    zoomOut(4);
 });
 
 // Star Dance
@@ -638,6 +858,10 @@ var drawFrame = function () {
     managePaths();
     calculateForces();
     falseArray = [];
+
+    if (centering) {
+        center(centeredParticle);
+    }
     for (var i = 0; i < list.length; i++) {
         falseArray[i] = false;
     }
