@@ -181,6 +181,7 @@ var Particle = function (htmlID, pathID, px, py, vx, vy, m, charge) {
     this.radius = Math.sqrt(this.mass);
     this.charge = charge;
     this.recentCollide = [];
+    this.growing = false;
     this.dString = "M " + this.position.x + " " + this.position.y;
     this.update = function () {
         this.acceleration = this.netForce.mult(1 / this.mass);
@@ -188,8 +189,10 @@ var Particle = function (htmlID, pathID, px, py, vx, vy, m, charge) {
         this.momentum = this.velocity.mult(this.mass);
         this.position = this.position.add(this.velocity, simSpeed);
         
-        $(this.htmlID).attr({
-            "r": this.radius,
+        if (!this.growing) {
+            $(this.htmlID).css("r", this.radius);
+        }
+        $(this.htmlID).css({
             "cx": this.position.x,
             "cy": this.position.y
         });
@@ -202,7 +205,7 @@ var Particle = function (htmlID, pathID, px, py, vx, vy, m, charge) {
     this.posUpdate = function () {
         this.position = this.position.add(this.velocity, simSpeed);
 
-        $(this.htmlID).attr({
+        $(this.htmlID).css({
             "r": this.radius,
             "cx": this.position.x,
             "cy": this.position.y
@@ -246,7 +249,7 @@ var createParticle = function (px, py, vx, vy, mass, charge, colorString) {
     }
     $("#canvas").prepend(newPath);
     $("#canvas").append(newTag);
-    $("#" + newTagId).attr({
+    $("#" + newTagId).css({
         "cx": px,
         "cy": py,
         "r": Math.sqrt(mass),
@@ -322,12 +325,13 @@ var absorbCollision = function(collisionGroup) {
 
         if (tracingPaths) { b.path.willBeDeleted = true; } 
         $(b.htmlID).insertBefore(a.htmlID);
-        $(b.htmlID).animate({
-            "r": 0,
-            "cx": a.position.x,
-            "cy": a.position.y,
-        }, 300, function() {
-            $(b.htmlID).remove();
+
+        $(b.htmlID).animate(
+            {"r": 0, "cx": a.position.x, "cy": a.position.y}, {
+            duration: 300,
+            complete: function() {
+                $(b.htmlID).remove();
+            }
         });
         
         // particle indices in 'list' change, so this part is an unfortunate necessity
@@ -342,11 +346,12 @@ var absorbCollision = function(collisionGroup) {
             }
         }
     }
-
-    $(a.htmlID).animate({
-        "r": a.radius,
-    }, 150);
-    
+    a.growing = true;
+    $(a.htmlID).animate(
+        {"r": a.radius}, 
+        150, 
+        function(){a.growing = false}
+    );
 };
 
 // Not the best algorithm for simulating simulatenous collisions with multiple particles
@@ -476,7 +481,6 @@ var collisionDetection = function () {
                 collisionStatusArray[j] = true;
                 list[i].recentCollide[j] = true;
                 list[j].recentCollide[i] = true;
-                //clearInterval(animation);
             }
         }
     }
@@ -496,7 +500,6 @@ var collisionDetection = function () {
     for (var i = 0; i < list.length; i++) {
         netKineticEnergy += 0.5 * list[i].mass * Math.pow(list[i].velocity.magnitude(), 2);
     }
-    //console.log(netKineticEnergy);
 };
 
 var calculateForces = function() {
@@ -522,19 +525,19 @@ var calculateForces = function() {
     }
 };
 function reset() {
-    G = 1; $("#gravity").attr("value", 15);
-    K = 0; $("#coulomb").attr("value", 15);
+    G = 1; $("#gravity").prop("value", 15);
+    K = 0; $("#coulomb").prop("value", 15);
     currentScalar = 1;
     centering = false;
     centeredParticle = null;
     numUniqueParticles = 1;
-    simSpeed = 1; $("#simspeed").attr("value", 20);
-    currentCharge = 0; $("#charge").attr("value", 50);
-    currentMass = 400; $("#simspeed").attr("value", 65);
-    elasticity = 1; $("#simspeed").attr("value", 100);
-    tracingPaths = true; $("#showpath").prop('checked', true);
-    absorbMode = false; $("absorb").prop('checked', false);
-    trailLength = 100; $("#trail-length").attr("value", 25);
+    simSpeed = 1; $("#simspeed").prop("value", 20);
+    currentCharge = 0; $("#charge").prop("value", 50);
+    currentMass = 400; $("#mass").prop("value", 65);
+    elasticity = 1; $("#elasticity").prop("value", 100);
+    absorbMode = false; $("#absorb").attr('checked', false);
+    trailLength = 100; $("#trail-length").prop("value", 25);
+    tracingPaths = true;
     for (var i = 0; i < list.length; i++)
     {
         $(list[i].htmlID).remove();
@@ -674,10 +677,11 @@ $(document).keydown(function(e) {
 
     }
 });
-$(window).resize(function() {
+$(window).resize(function() {  
     width = window.innerWidth - 200;
     height = window.innerHeight;
     screenCenter = new Vector(width/2, height/2);
+    clearPaths();
 });
 $('#canvas').mousewheel(function(event) {
     if (event.deltaY > 0) {
@@ -805,13 +809,31 @@ $("#reset").click(function() {
     reset();
 });
 
+$("#presetGroup1").click(function(){
+    $("#dropdownGroup1").show();
+});
+
+window.onclick = function(event) {
+  if (!event.target.matches('.dropbtn')) {
+
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    var i;
+    for (i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains('show')) {
+        openDropdown.classList.remove('show');
+      }
+    }
+  }
+}
+
 // Sun-Earth-Moon
 $("#preset1").click(function(){
     reset();
     centering = true;
-    centeredParticle = createParticle(700, 500, 0, 0.47, 20000, 0, "rgb(255, 255, 0)");
+    createParticle(700, 500, 0, 0.47, 20000, 0, "rgb(255, 255, 0)");
     createParticle(1300, 500, 0, -5.77, 1000, 0, "rgb(0, 255, 30)");
-    createParticle(1400, 500, 0, -8.93, 100, 0, "rgb(70, 70, 70)");
+    centeredParticle = createParticle(1400, 500, 0, -8.93, 100, 0, "rgb(70, 70, 70)");
     zoomOut(4);
 });
 
